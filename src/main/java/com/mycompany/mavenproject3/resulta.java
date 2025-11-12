@@ -33,7 +33,6 @@ public class resulta extends javax.swing.JFrame {
         initComponents();
         conn = Mavenproject3.conn();
         loadTableData();
-        
         for (int year = 2025; year >= 0; year--) Year.addItem(String.valueOf(year));
         for (int day = 31; day >= 0; day--) Day.addItem(String.valueOf(day));
         for (int month = 12; month >= 0; month--) Month.addItem(String.valueOf(month));
@@ -41,6 +40,8 @@ public class resulta extends javax.swing.JFrame {
     }
     
     private void loadTableData() {
+        loadGeneralJournal();
+        //loadGeneralLedger();
         try {
             String sqlquery = "SELECT * FROM Table1";
             pst = conn.prepareStatement(sqlquery);
@@ -74,42 +75,42 @@ public class resulta extends javax.swing.JFrame {
         DefaultTableModel model = (DefaultTableModel) jTable3.getModel();
         model.setRowCount(0);
 
-        // Define all accounts with their types - easy to modify
+        // Define all accounts with display names and types
         String[][] allAccounts = {
-            // ASSET accounts (increase with debit, decrease with credit)
-            {"Cash [ASSET]", "ASSET"},
-            {"Accounts Receivable [ASSET]", "ASSET"},
-            {"Inventory [ASSET]", "ASSET"},
-            {"Prepaid Expenses [ASSET]", "ASSET"},
-            {"Property, Plant & Equipment (PP&E) [ASSET]", "ASSET"},
-            {"Intangible Assets [ASSET]", "ASSET"},
-            {"Investments [ASSET]", "ASSET"},
-            {"Supplies [ASSET]", "ASSET"},
-            {"Land [ASSET]", "ASSET"},
-            {"Equipment [ASSET]", "ASSET"},
+            // ASSET accounts
+            {"Cash", "ASSET"},
+            {"Accounts Receivable", "ASSET"},
+            {"Inventory", "ASSET"},
+            {"Prepaid Expenses", "ASSET"},
+            {"Property, Plant & Equipment (PP&E)", "ASSET"},
+            {"Intangible Assets", "ASSET"},
+            {"Investments", "ASSET"},
+            {"Supplies", "ASSET"},
+            {"Land", "ASSET"},
+            {"Equipment", "ASSET"},
             
-            // LIABILITY accounts (increase with credit, decrease with debit)
-            {"Accounts Payable [LIABILITY]", "LIABILITY"},
-            {"Notes Payable [LIABILITY]", "LIABILITY"},
-            {"Accrued Expenses Payable [LIABILITY]", "LIABILITY"},
-            {"Unearned Revenue [LIABILITY]", "LIABILITY"},
-            {"Long-Term Debt [LIABILITY]", "LIABILITY"},
-            {"Loans Payable [LIABILITY]", "LIABILITY"},
-            {"Tax Payable [LIABILITY]", "LIABILITY"},
-            {"Wages Payable [LIABILITY]", "LIABILITY"},
-            {"Interest Payable [LIABILITY]", "LIABILITY"},
+            // LIABILITY accounts
+            {"Accounts Payable", "LIABILITY"},
+            {"Notes Payable", "LIABILITY"},
+            {"Accrued Expenses Payable", "LIABILITY"},
+            {"Unearned Revenue", "LIABILITY"},
+            {"Long-Term Debt", "LIABILITY"},
+            {"Loans Payable", "LIABILITY"},
+            {"Tax Payable", "LIABILITY"},
+            {"Wages Payable", "LIABILITY"},
+            {"Interest Payable", "LIABILITY"},
             
-            // EQUITY accounts (increase with credit, decrease with debit)
-            {"Common Stock [EQUITY]", "EQUITY"},
-            {"Paid-in Capital in Excess of Par [EQUITY]", "EQUITY"},
-            {"Retained Earnings [EQUITY]", "EQUITY"},
-            {"Treasury Stock (contra-equity) [EQUITY]", "EQUITY"},
-            {"Additional Paid-in Capital [EQUITY]", "EQUITY"},
-            {"Owner's Capital (for sole proprietorship) [EQUITY]", "EQUITY"},
-            {"Dividend/Drawings (owner's withdrawals) [EQUITY]", "EQUITY"}
+            // EQUITY accounts
+            {"Common Stock", "EQUITY"},
+            {"Paid-in Capital in Excess of Par", "EQUITY"},
+            {"Retained Earnings", "EQUITY"},
+            {"Treasury Stock (contra-equity)", "EQUITY"},
+            {"Additional Paid-in Capital", "EQUITY"},
+            {"Owner's Capital (for sole proprietorship)", "EQUITY"},
+            {"Dividend/Drawings (owner's withdrawals)", "EQUITY"}
         };
 
-        // Get all debit transactions
+        // Get all debit transactions - use the full name with type for database matching
         String debitQuery = "SELECT [Debit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
                            "FROM Table1 GROUP BY [Debit Account]";
         pst = conn.prepareStatement(debitQuery);
@@ -133,11 +134,12 @@ public class resulta extends javax.swing.JFrame {
 
         // Calculate balance for each account based on accounting rules
         for (String[] account : allAccounts) {
-            String accountName = account[0];
+            String displayName = account[0];  // Clean name without [TYPE]
             String accountType = account[1];
+            String fullName = displayName + " [" + accountType + "]";  // Full name for database lookup
             
-            double debitTotal = debitTotals.getOrDefault(accountName, 0.0);
-            double creditTotal = creditTotals.getOrDefault(accountName, 0.0);
+            double debitTotal = debitTotals.getOrDefault(fullName, 0.0);
+            double creditTotal = creditTotals.getOrDefault(fullName, 0.0);
             double balance = 0.0;
 
             // Apply proper accounting rules:
@@ -149,7 +151,8 @@ public class resulta extends javax.swing.JFrame {
                 balance = creditTotal - debitTotal;
             }
             
-            model.addRow(new Object[]{accountName, accountType, balance});
+            // Use the clean display name without [TYPE] in the table
+            model.addRow(new Object[]{displayName, accountType, balance});
         }
 
     } catch (Exception e) {
@@ -158,8 +161,113 @@ public class resulta extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, "Error loading accounts: " + e.getMessage());
     }
 }
+    private void loadGeneralJournal() {
+        try {
+            String sqlquery = "SELECT * FROM Table1";
+            pst = conn.prepareStatement(sqlquery);
+            rs = pst.executeQuery();
 
+            DefaultTableModel model = (DefaultTableModel) jTable4.getModel();
+            model.setRowCount(0); // Clear old data
+            DefaultTableModel model2 = (DefaultTableModel) jTable4.getModel();
+            model2.setRowCount(0);
 
+            while (rs.next()) {
+                String Date = rs.getString("Date");
+                String Description = rs.getString("Description");
+                String DebitAcc = rs.getString("Debit Account");
+                String DebAccountName = DebitAcc.split("\\[")[0];
+                String CreditAcc = rs.getString("Credit Account");
+                String CredAccountName = CreditAcc.split("\\[")[0];
+                String Amount = rs.getString("Amount");
+                
+                
+
+                // Add kag row
+                model.addRow(new Object[]{Date, Description, DebAccountName, Amount, " "});
+                model.addRow(new Object[] {" ", " ", CredAccountName, " ", Amount});
+            }
+            loadAccountsTable();
+        } catch (Exception e) {
+            System.out.println("Error loading data: " + e.getMessage());
+        }
+    }
+
+    /*private void loadGeneralLedger() {
+    try {
+        DefaultTableModel model = (DefaultTableModel) jTable5.getModel();
+        model.setRowCount(0);
+
+        // Get all transactions ordered by date
+        String sqlquery = "SELECT * FROM Table1 ORDER BY Date";
+        pst = conn.prepareStatement(sqlquery);
+        rs = pst.executeQuery();
+
+        // Map to store running balances for each account
+        java.util.Map<String, Double> accountBalances = new java.util.HashMap<>();
+        
+        // Initialize all accounts with zero balance
+        String[] allAccounts = {
+            "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", 
+            "Prepaid Expenses [ASSET]", "Property, Plant & Equipment (PP&E) [ASSET]", 
+            "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", 
+            "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", 
+            "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", 
+            "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", 
+            "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", 
+            "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", 
+            "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", 
+            "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", 
+            "Additional Paid-in Capital [EQUITY]", 
+            "Owner's Capital (for sole proprietorship) [EQUITY]", 
+            "Dividend/Drawings (owner's withdrawals) [EQUITY]"
+        };
+        
+        for (String account : allAccounts) {
+            accountBalances.put(account, 0.0);
+        }
+
+        while (rs.next()) {
+            String Date = rs.getString("Date");
+            String Description = rs.getString("Description");
+            String DebitAcc = rs.getString("Debit Account");
+            String CreditAcc = rs.getString("Credit Account");
+            String Amount = rs.getString("Amount");
+            double amountValue = Double.parseDouble(Amount.replace(",", ""));
+            
+            // Update balances for debit and credit accounts
+            double debitBalance = accountBalances.get(DebitAcc);
+            double creditBalance = accountBalances.get(CreditAcc);
+            
+            // Apply accounting rules
+            if (DebitAcc.contains("[ASSET]")) {
+                debitBalance += amountValue; // Assets increase with debit
+            } else if (DebitAcc.contains("[LIABILITY]") || DebitAcc.contains("[EQUITY]")) {
+                debitBalance -= amountValue; // Liabilities/Equity decrease with debit
+            }
+            
+            if (CreditAcc.contains("[ASSET]")) {
+                creditBalance -= amountValue; // Assets decrease with credit
+            } else if (CreditAcc.contains("[LIABILITY]") || CreditAcc.contains("[EQUITY]")) {
+                creditBalance += amountValue; // Liabilities/Equity increase with credit
+            }
+            
+            // Update the balances in the map
+            accountBalances.put(DebitAcc, debitBalance);
+            accountBalances.put(CreditAcc, creditBalance);
+            
+            // Add row to table - showing the Cash balance (or you can modify to show relevant balance)
+            double currentCashBalance = accountBalances.get("Cash [ASSET]");
+            
+            // Add each row
+            model.addRow(new Object[]{Date, Description, DebitAcc, CreditAcc, Amount, currentCashBalance});
+        }
+
+    } catch (Exception e) {
+        System.out.println("Error loading general ledger data: " + e.getMessage());
+        e.printStackTrace();
+    }
+}*/
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -192,6 +300,12 @@ public class resulta extends javax.swing.JFrame {
         jPanel1 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTable3 = new javax.swing.JTable();
+        jPanel2 = new javax.swing.JPanel();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        jTable4 = new javax.swing.JTable();
+        jPanel3 = new javax.swing.JPanel();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        jTable5 = new javax.swing.JTable();
         jPanel5 = new javax.swing.JPanel();
         jButton1 = new javax.swing.JButton();
 
@@ -245,7 +359,7 @@ public class resulta extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(DescriptionField)
-                            .addComponent(DebitField, 0, 549, Short.MAX_VALUE)
+                            .addComponent(DebitField, 0, 539, Short.MAX_VALUE)
                             .addComponent(CreditField, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel6Layout.createSequentialGroup()
                                 .addComponent(Year, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -289,7 +403,7 @@ public class resulta extends javax.swing.JFrame {
                     .addComponent(AmountField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(246, Short.MAX_VALUE))
+                .addContainerGap(218, Short.MAX_VALUE))
         );
 
         jTabbedPane2.addTab("New Transactions", jPanel6);
@@ -438,7 +552,7 @@ public class resulta extends javax.swing.JFrame {
                         .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(17, Short.MAX_VALUE))
+                .addContainerGap(8, Short.MAX_VALUE))
         );
         jPanel7Layout.setVerticalGroup(
             jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -447,7 +561,7 @@ public class resulta extends javax.swing.JFrame {
                 .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel6)
                     .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 28, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 369, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(70, 70, 70))
         );
@@ -482,17 +596,97 @@ public class resulta extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 710, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(15, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(53, 53, 53)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 394, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(55, Short.MAX_VALUE))
+                .addContainerGap(27, Short.MAX_VALUE))
         );
 
         jTabbedPane2.addTab("Accounts", jPanel1);
+
+        jTable4.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null}
+            },
+            new String [] {
+                "Date", "Description", "Account", "Debit", "Credit"
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+        });
+        jScrollPane3.setViewportView(jTable4);
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 697, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(19, Short.MAX_VALUE))
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addGap(24, 24, 24)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(23, Short.MAX_VALUE))
+        );
+
+        jTabbedPane2.addTab("General Journal", jPanel2);
+
+        jTable5.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null},
+                {null, null, null, null, null, null}
+            },
+            new String [] {
+                "Date", "Description", "Debit Account", "Credit Account", "Amount", "balance"
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+        });
+        jScrollPane4.setViewportView(jTable5);
+
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGap(18, 18, 18)
+                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 630, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(74, Short.MAX_VALUE))
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                .addContainerGap(27, Short.MAX_VALUE)
+                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(20, 20, 20))
+        );
+
+        jTabbedPane2.addTab("General Ledger", jPanel3);
 
         jButton1.setText("ADD");
         jButton1.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -523,14 +717,18 @@ public class resulta extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addComponent(jPanel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(jTabbedPane2)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jTabbedPane2)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTabbedPane2))
+                .addComponent(jTabbedPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 509, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(196, Short.MAX_VALUE))
         );
 
         pack();
@@ -659,14 +857,20 @@ public class resulta extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
     private javax.swing.JPanel jPanel7;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JTabbedPane jTabbedPane2;
     private javax.swing.JTable jTable2;
     private javax.swing.JTable jTable3;
+    private javax.swing.JTable jTable4;
+    private javax.swing.JTable jTable5;
     private javax.swing.JTextField jTextField1;
     // End of variables declaration//GEN-END:variables
 }

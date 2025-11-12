@@ -60,7 +60,7 @@ public class resulta extends javax.swing.JFrame {
                 
                 
 
-                // Add each row
+                // Add kag row
                 model.addRow(new Object[]{Date, Description, DebitAcc, CreditAcc, Amount});
             }
             loadAccountsTable();
@@ -70,52 +70,94 @@ public class resulta extends javax.swing.JFrame {
     }
     
     private void loadAccountsTable() {
-        try {
-            DefaultTableModel model = (DefaultTableModel) jTable3.getModel();
-            model.setRowCount(0);
+    try {
+        DefaultTableModel model = (DefaultTableModel) jTable3.getModel();
+        model.setRowCount(0);
 
-            // Proper accounting: Debits and Credits affect accounts differently
-            String sqlQuery = "SELECT Account, Type, " +
-                "SUM(CASE WHEN Type = 'ASSET' THEN DebitAmount - CreditAmount " +
-                        "ELSE CreditAmount - DebitAmount END) as Balance " +
-                "FROM (" +
-                "SELECT [Debit Account] as Account, " +
-                       "CASE WHEN [Debit Account] LIKE '%[ASSET]' THEN 'ASSET' " +
-                            "WHEN [Debit Account] LIKE '%[LIABILITY]' THEN 'LIABILITY' " +
-                            "WHEN [Debit Account] LIKE '%[EQUITY]' THEN 'EQUITY' " +
-                            "ELSE 'UNKNOWN' END as Type, " +
-                       "CAST([Amount] as DECIMAL(10,2)) as DebitAmount, " +
-                       "0 as CreditAmount " +
-                "FROM Table1 " +
-                "UNION ALL " +
-                "SELECT [Credit Account] as Account, " +
-                       "CASE WHEN [Credit Account] LIKE '%[ASSET]' THEN 'ASSET' " +
-                            "WHEN [Credit Account] LIKE '%[LIABILITY]' THEN 'LIABILITY' " +
-                            "WHEN [Credit Account] LIKE '%[EQUITY]' THEN 'EQUITY' " +
-                            "ELSE 'UNKNOWN' END as Type, " +
-                       "0 as DebitAmount, " +
-                       "CAST([Amount] as DECIMAL(10,2)) as CreditAmount " +
-                "FROM Table1" +
-                ") AS AllAccounts " +
-                "GROUP BY Account, Type " +
-                "ORDER BY Type, Account";
+        // Define all accounts with their types - easy to modify
+        String[][] allAccounts = {
+            // ASSET accounts (increase with debit, decrease with credit)
+            {"Cash [ASSET]", "ASSET"},
+            {"Accounts Receivable [ASSET]", "ASSET"},
+            {"Inventory [ASSET]", "ASSET"},
+            {"Prepaid Expenses [ASSET]", "ASSET"},
+            {"Property, Plant & Equipment (PP&E) [ASSET]", "ASSET"},
+            {"Intangible Assets [ASSET]", "ASSET"},
+            {"Investments [ASSET]", "ASSET"},
+            {"Supplies [ASSET]", "ASSET"},
+            {"Land [ASSET]", "ASSET"},
+            {"Equipment [ASSET]", "ASSET"},
+            
+            // LIABILITY accounts (increase with credit, decrease with debit)
+            {"Accounts Payable [LIABILITY]", "LIABILITY"},
+            {"Notes Payable [LIABILITY]", "LIABILITY"},
+            {"Accrued Expenses Payable [LIABILITY]", "LIABILITY"},
+            {"Unearned Revenue [LIABILITY]", "LIABILITY"},
+            {"Long-Term Debt [LIABILITY]", "LIABILITY"},
+            {"Loans Payable [LIABILITY]", "LIABILITY"},
+            {"Tax Payable [LIABILITY]", "LIABILITY"},
+            {"Wages Payable [LIABILITY]", "LIABILITY"},
+            {"Interest Payable [LIABILITY]", "LIABILITY"},
+            
+            // EQUITY accounts (increase with credit, decrease with debit)
+            {"Common Stock [EQUITY]", "EQUITY"},
+            {"Paid-in Capital in Excess of Par [EQUITY]", "EQUITY"},
+            {"Retained Earnings [EQUITY]", "EQUITY"},
+            {"Treasury Stock (contra-equity) [EQUITY]", "EQUITY"},
+            {"Additional Paid-in Capital [EQUITY]", "EQUITY"},
+            {"Owner's Capital (for sole proprietorship) [EQUITY]", "EQUITY"},
+            {"Dividend/Drawings (owner's withdrawals) [EQUITY]", "EQUITY"}
+        };
 
-            pst = conn.prepareStatement(sqlQuery);
-            rs = pst.executeQuery();
-
-            while (rs.next()) {
-                String account = rs.getString("Account");
-                String type = rs.getString("Type");
-                double balance = rs.getDouble("Balance");
-
-                model.addRow(new Object[]{account, type, balance});
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error loading accounts data: " + e.getMessage());
-            e.printStackTrace();
+        // Get all debit transactions
+        String debitQuery = "SELECT [Debit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
+                           "FROM Table1 GROUP BY [Debit Account]";
+        pst = conn.prepareStatement(debitQuery);
+        rs = pst.executeQuery();
+        
+        java.util.Map<String, Double> debitTotals = new java.util.HashMap<>();
+        while (rs.next()) {
+            debitTotals.put(rs.getString("Account"), rs.getDouble("Total"));
         }
+
+        // Get all credit transactions  
+        String creditQuery = "SELECT [Credit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
+                            "FROM Table1 GROUP BY [Credit Account]";
+        pst = conn.prepareStatement(creditQuery);
+        rs = pst.executeQuery();
+        
+        java.util.Map<String, Double> creditTotals = new java.util.HashMap<>();
+        while (rs.next()) {
+            creditTotals.put(rs.getString("Account"), rs.getDouble("Total"));
+        }
+
+        // Calculate balance for each account based on accounting rules
+        for (String[] account : allAccounts) {
+            String accountName = account[0];
+            String accountType = account[1];
+            
+            double debitTotal = debitTotals.getOrDefault(accountName, 0.0);
+            double creditTotal = creditTotals.getOrDefault(accountName, 0.0);
+            double balance = 0.0;
+
+            // Apply proper accounting rules:
+            if (accountType.equals("ASSET")) {
+                // Assets: Debit increases, Credit decreases
+                balance = debitTotal - creditTotal;
+            } else if (accountType.equals("LIABILITY") || accountType.equals("EQUITY")) {
+                // Liabilities & Equity: Credit increases, Debit decreases  
+                balance = creditTotal - debitTotal;
+            }
+            
+            model.addRow(new Object[]{accountName, accountType, balance});
+        }
+
+    } catch (Exception e) {
+        System.out.println("Error loading accounts data: " + e.getMessage());
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error loading accounts: " + e.getMessage());
     }
+}
 
 
     /**

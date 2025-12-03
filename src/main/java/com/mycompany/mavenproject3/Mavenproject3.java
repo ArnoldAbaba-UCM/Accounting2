@@ -75,6 +75,9 @@ public class Mavenproject3 {
     }
     
     public static void getExcelNigga(JFrame frame){
+        Connection conn = conn();
+        PreparedStatement pst = null;
+        ResultSet rs = null;
         JFileChooser fileChooser = new JFileChooser();
             // Show open dialog
             int result = fileChooser.showOpenDialog(frame);
@@ -126,13 +129,30 @@ public class Mavenproject3 {
                             String Amount = (row.getCell(4) != null) ? row.getCell(4).toString() : "";
                             System.out.println("Date: " + Date + ", Description: " + Description+
                                         ", Debit: "+ Debit + ", Credit: "+ Credit+", Amount: "+Amount);
+                            try {
+                                String sql = "INSERT INTO Table1 "
+                               + "([Date], [Description], [Debit Account], [Credit Account], [Amount]) "
+                               + "VALUES (?, ?, ?, ?, ?)";
+
+                                pst = conn.prepareStatement(sql);
+                                pst.setString(1, Date);
+                                pst.setString(2, Description);
+                                pst.setString(3, Debit);
+                                pst.setString(4, Credit);
+                                pst.setString(5, Amount);
+                                pst.executeUpdate();
+                                System.out.println("Success");
+
+                            } catch (SQLException e) {
+                                System.out.println(e);
+
+                            }
                         }
                 }
                         
                         
                         workbook.close();
-                        file.close();
-                        
+                        file.close();   
                     } catch (Exception ex) {
                         System.out.println("Error: " + ex.getMessage());
                     }
@@ -159,9 +179,7 @@ public class Mavenproject3 {
         }
     }
     
-    public void getBalance(String amount){
-        
-    }
 }
 
 //updated
+//update3

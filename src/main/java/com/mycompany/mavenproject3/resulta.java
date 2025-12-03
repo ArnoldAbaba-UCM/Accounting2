@@ -41,7 +41,7 @@ public class resulta extends javax.swing.JFrame {
     
     private void loadTableData() {
         loadGeneralJournal();
-        //loadGeneralLedger();
+        loadGeneralLedger();
         try {
             String sqlquery = "SELECT * FROM Table1";
             pst = conn.prepareStatement(sqlquery);
@@ -71,96 +71,344 @@ public class resulta extends javax.swing.JFrame {
     }
     
     private void loadAccountsTable() {
-    try {
-        DefaultTableModel model = (DefaultTableModel) jTable3.getModel();
-        model.setRowCount(0);
+        try {
+            DefaultTableModel model = (DefaultTableModel) jTable3.getModel();
+            DefaultTableModel model2 = (DefaultTableModel) jTable6.getModel();
+            DefaultTableModel model3 = (DefaultTableModel) jTable7.getModel();
+            DefaultTableModel model4 = (DefaultTableModel) jTable8.getModel();
+            DefaultTableModel model5 = (DefaultTableModel) jTable9.getModel();
+            model.setRowCount(0);
+            model2.setRowCount(0);
+            model3.setRowCount(0);
+            model4.setRowCount(0);
+            model5.setRowCount(0);
 
-        // Define all accounts with display names and types
-        String[][] allAccounts = {
-            // ASSET accounts
-            {"Cash", "ASSET"},
-            {"Accounts Receivable", "ASSET"},
-            {"Inventory", "ASSET"},
-            {"Prepaid Expenses", "ASSET"},
-            {"Property, Plant & Equipment (PP&E)", "ASSET"},
-            {"Intangible Assets", "ASSET"},
-            {"Investments", "ASSET"},
-            {"Supplies", "ASSET"},
-            {"Land", "ASSET"},
-            {"Equipment", "ASSET"},
-            
-            // LIABILITY accounts
-            {"Accounts Payable", "LIABILITY"},
-            {"Notes Payable", "LIABILITY"},
-            {"Accrued Expenses Payable", "LIABILITY"},
-            {"Unearned Revenue", "LIABILITY"},
-            {"Long-Term Debt", "LIABILITY"},
-            {"Loans Payable", "LIABILITY"},
-            {"Tax Payable", "LIABILITY"},
-            {"Wages Payable", "LIABILITY"},
-            {"Interest Payable", "LIABILITY"},
-            
-            // EQUITY accounts
-            {"Common Stock", "EQUITY"},
-            {"Paid-in Capital in Excess of Par", "EQUITY"},
-            {"Retained Earnings", "EQUITY"},
-            {"Treasury Stock (contra-equity)", "EQUITY"},
-            {"Additional Paid-in Capital", "EQUITY"},
-            {"Owner's Capital (for sole proprietorship)", "EQUITY"},
-            {"Dividend/Drawings (owner's withdrawals)", "EQUITY"}
-        };
+            // Define all accounts with display names and types - UPDATED TO MATCH DATABASE
+            String[][] allAccounts = {
+                // ASSET accounts
+                {"Cash", "ASSET"},
+                {"Accounts Receivable", "ASSET"},
+                {"Inventory", "ASSET"},
+                {"Prepaid Expenses", "ASSET"},
+                {"Equipment", "ASSET"},  // Changed from "Property, Plant & Equipment (PP&E)"
+                {"Intangible Assets", "ASSET"},
+                {"Investments", "ASSET"},
+                {"Supplies", "ASSET"},
+                {"Land", "ASSET"},
 
-        // Get all debit transactions - use the full name with type for database matching
-        String debitQuery = "SELECT [Debit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
-                           "FROM Table1 GROUP BY [Debit Account]";
-        pst = conn.prepareStatement(debitQuery);
-        rs = pst.executeQuery();
-        
-        java.util.Map<String, Double> debitTotals = new java.util.HashMap<>();
-        while (rs.next()) {
-            debitTotals.put(rs.getString("Account"), rs.getDouble("Total"));
-        }
+                // LIABILITY accounts
+                {"Accounts Payable", "LIABILITY"},
+                {"Notes Payable", "LIABILITY"},
+                {"Accrued Expenses Payable", "LIABILITY"},
+                {"Unearned Revenue", "LIABILITY"},
+                {"Long-Term Debt", "LIABILITY"},
+                {"Loans Payable", "LIABILITY"},
+                {"Tax Payable", "LIABILITY"},
+                {"Wages Payable", "LIABILITY"},
+                {"Interest Payable", "LIABILITY"},
 
-        // Get all credit transactions  
-        String creditQuery = "SELECT [Credit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
-                            "FROM Table1 GROUP BY [Credit Account]";
-        pst = conn.prepareStatement(creditQuery);
-        rs = pst.executeQuery();
-        
-        java.util.Map<String, Double> creditTotals = new java.util.HashMap<>();
-        while (rs.next()) {
-            creditTotals.put(rs.getString("Account"), rs.getDouble("Total"));
-        }
+                // EQUITY accounts
+                {"Common Stock", "EQUITY"},
+                {"Paid-in Capital in Excess of Par", "EQUITY"},
+                {"Retained Earnings", "EQUITY"},
+                {"Treasury Stock (contra-equity)", "EQUITY"},
+                {"Additional Paid-in Capital", "EQUITY"},
+                {"Owner's Capital (for sole proprietorship)", "EQUITY"},  // Note: Changed to standard apostrophe
+                {"Dividend/Drawings (owner's withdrawals)", "EQUITY"}
+            };
 
-        // Calculate balance for each account based on accounting rules
-        for (String[] account : allAccounts) {
-            String displayName = account[0];  // Clean name without [TYPE]
-            String accountType = account[1];
-            String fullName = displayName + " [" + accountType + "]";  // Full name for database lookup
-            
-            double debitTotal = debitTotals.getOrDefault(fullName, 0.0);
-            double creditTotal = creditTotals.getOrDefault(fullName, 0.0);
-            double balance = 0.0;
+            // Get all debit transactions from database
+            String debitQuery = "SELECT [Debit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
+                               "FROM Table1 GROUP BY [Debit Account]";
+            pst = conn.prepareStatement(debitQuery);
+            rs = pst.executeQuery();
 
-            // Apply proper accounting rules:
-            if (accountType.equals("ASSET")) {
-                // Assets: Debit increases, Credit decreases
-                balance = debitTotal - creditTotal;
-            } else if (accountType.equals("LIABILITY") || accountType.equals("EQUITY")) {
-                // Liabilities & Equity: Credit increases, Debit decreases  
-                balance = creditTotal - debitTotal;
+            java.util.Map<String, Double> debitTotals = new java.util.HashMap<>();
+            while (rs.next()) {
+                String accountName = rs.getString("Account");
+                // Remove any leading/trailing whitespace and normalize apostrophes
+                accountName = accountName.trim();
+                // Normalize apostrophe characters
+                accountName = accountName.replace("’", "'"); // Replace curly apostrophe with standard
+                debitTotals.put(accountName, rs.getDouble("Total"));
             }
-            
-            // Use the clean display name without [TYPE] in the table
-            model.addRow(new Object[]{displayName, accountType, balance});
-        }
 
-    } catch (Exception e) {
-        System.out.println("Error loading accounts data: " + e.getMessage());
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Error loading accounts: " + e.getMessage());
+            // Get all credit transactions from database  
+            String creditQuery = "SELECT [Credit Account] as Account, SUM(CAST([Amount] as DECIMAL(10,2))) as Total " +
+                                "FROM Table1 GROUP BY [Credit Account]";
+            pst = conn.prepareStatement(creditQuery);
+            rs = pst.executeQuery();
+
+            java.util.Map<String, Double> creditTotals = new java.util.HashMap<>();
+            while (rs.next()) {
+                String accountName = rs.getString("Account");
+                // Remove any leading/trailing whitespace and normalize apostrophes
+                accountName = accountName.trim();
+                // Normalize apostrophe characters
+                accountName = accountName.replace("’", "'"); // Replace curly apostrophe with standard
+                creditTotals.put(accountName, rs.getDouble("Total"));
+            }
+
+            // Variables to store final balances
+            double cashFinalBalance = 0.0;
+            double accountsReceivableFinalBalance = 0.0;
+            double inventoryFinalBalance = 0.0;
+            double prepaidExpensesFinalBalance = 0.0;
+            double equipmentFinalBalance = 0.0;
+            double intangibleAssetsFinalBalance = 0.0;
+            double investmentsFinalBalance = 0.0;
+            double suppliesFinalBalance = 0.0;
+            double landFinalBalance = 0.0;
+            double accountsPayableFinalBalance = 0.0;
+            double notesPayableFinalBalance = 0.0;
+            double accruedExpensesPayableFinalBalance = 0.0;
+            double unearnedRevenueFinalBalance = 0.0;
+            double longTermDebtFinalBalance = 0.0;
+            double loansPayableFinalBalance = 0.0;
+            double taxPayableFinalBalance = 0.0;
+            double wagesPayableFinalBalance = 0.0;
+            double interestPayableFinalBalance = 0.0;
+            double commonStockFinalBalance = 0.0;
+            double paidInCapitalFinalBalance = 0.0;
+            double retainedEarningsFinalBalance = 0.0;
+            double treasuryStockFinalBalance = 0.0;
+            double additionalPaidInCapitalFinalBalance = 0.0;
+            double ownersCapitalFinalBalance = 0.0;
+            double dividendDrawingsFinalBalance = 0.0;
+
+            // Calculate balance for each account based on proper accounting rules
+            for (String[] account : allAccounts) {
+                String displayName = account[0];
+                String accountType = account[1];
+
+                // Create two possible formats for database lookup
+                String fullName1 = displayName + " [" + accountType + "]";
+                String fullName2 = displayName.replace("'", "’") + " [" + accountType + "]"; // With curly apostrophe
+
+                double debitTotal = 0.0;
+                double creditTotal = 0.0;
+
+                // Try both formats for database lookup
+                if (debitTotals.containsKey(fullName1)) {
+                    debitTotal = debitTotals.get(fullName1);
+                } else if (debitTotals.containsKey(fullName2)) {
+                    debitTotal = debitTotals.get(fullName2);
+                }
+
+                if (creditTotals.containsKey(fullName1)) {
+                    creditTotal = creditTotals.get(fullName1);
+                } else if (creditTotals.containsKey(fullName2)) {
+                    creditTotal = creditTotals.get(fullName2);
+                }
+
+                double balance = 0.0;
+
+                // Apply proper accounting rules:
+                if (accountType.equals("ASSET")) {
+                    // Assets: Debit increases, Credit decreases (Normal Debit Balance)
+                    balance = debitTotal - creditTotal;
+                } else if (accountType.equals("LIABILITY") || accountType.equals("EQUITY")) {
+                    // Liabilities & Equity: Credit increases, Debit decreases (Normal Credit Balance)  
+                    balance = creditTotal - debitTotal;
+                }
+
+                // Add to table model
+                model.addRow(new Object[]{displayName, accountType, balance});
+
+                // Assign to individual balance variables
+                switch(displayName) {
+                    case "Cash":
+                        cashFinalBalance = balance;
+                        break;
+                    case "Accounts Receivable":
+                        accountsReceivableFinalBalance = balance;
+                        break;
+                    case "Inventory":
+                        inventoryFinalBalance = balance;
+                        break;
+                    case "Prepaid Expenses":
+                        prepaidExpensesFinalBalance = balance;
+                        break;
+                    case "Equipment":
+                        equipmentFinalBalance = balance;
+                        break;
+                    case "Intangible Assets":
+                        intangibleAssetsFinalBalance = balance;
+                        break;
+                    case "Investments":
+                        investmentsFinalBalance = balance;
+                        break;
+                    case "Supplies":
+                        suppliesFinalBalance = balance;
+                        break;
+                    case "Land":
+                        landFinalBalance = balance;
+                        break;
+                    case "Accounts Payable":
+                        accountsPayableFinalBalance = balance;
+                        break;
+                    case "Notes Payable":
+                        notesPayableFinalBalance = balance;
+                        break;
+                    case "Accrued Expenses Payable":
+                        accruedExpensesPayableFinalBalance = balance;
+                        break;
+                    case "Unearned Revenue":
+                        unearnedRevenueFinalBalance = balance;
+                        break;
+                    case "Long-Term Debt":
+                        longTermDebtFinalBalance = balance;
+                        break;
+                    case "Loans Payable":
+                        loansPayableFinalBalance = balance;
+                        break;
+                    case "Tax Payable":
+                        taxPayableFinalBalance = balance;
+                        break;
+                    case "Wages Payable":
+                        wagesPayableFinalBalance = balance;
+                        break;
+                    case "Interest Payable":
+                        interestPayableFinalBalance = balance;
+                        break;
+                    case "Common Stock":
+                        commonStockFinalBalance = balance;
+                        break;
+                    case "Paid-in Capital in Excess of Par":
+                        paidInCapitalFinalBalance = balance;
+                        break;
+                    case "Retained Earnings":
+                        retainedEarningsFinalBalance = balance;
+                        break;
+                    case "Treasury Stock (contra-equity)":
+                        treasuryStockFinalBalance = balance;
+                        break;
+                    case "Additional Paid-in Capital":
+                        additionalPaidInCapitalFinalBalance = balance;
+                        break;
+                    case "Owner's Capital (for sole proprietorship)":
+                        ownersCapitalFinalBalance = balance;
+                        break;
+                    case "Dividend/Drawings (owner's withdrawals)":
+                        dividendDrawingsFinalBalance = balance;
+                        break;
+                }
+            }
+
+            
+            if(cashFinalBalance!=0){
+                model2.addRow(new Object[]{ "Cash", cashFinalBalance});
+            }
+            if(accountsReceivableFinalBalance!=0){
+                model2.addRow(new Object[]{ "Accounts Receivable", accountsReceivableFinalBalance});
+            }
+            if(inventoryFinalBalance!=0){
+                model2.addRow(new Object[]{ "Inventory", inventoryFinalBalance});
+            }
+            if(prepaidExpensesFinalBalance!=0){
+                model2.addRow(new Object[]{ "Prepaid Expenses", prepaidExpensesFinalBalance});
+            }
+            if(equipmentFinalBalance!=0){
+                model2.addRow(new Object[]{ "Equipment", equipmentFinalBalance});
+            }
+            if(intangibleAssetsFinalBalance!=0){
+                model2.addRow(new Object[]{ "Intangible Assets", intangibleAssetsFinalBalance});
+            }
+            if(investmentsFinalBalance!=0){
+                model2.addRow(new Object[]{ "Investments", investmentsFinalBalance});
+            }
+            if(suppliesFinalBalance!=0){
+                model2.addRow(new Object[]{ "Supplies", suppliesFinalBalance});
+            }
+            if(landFinalBalance!=0){
+                model2.addRow(new Object[]{ "Land", landFinalBalance});
+            }
+            if(accountsPayableFinalBalance!=0){
+                model3.addRow(new Object[]{ "Accounts Payable", accountsPayableFinalBalance});
+            }
+            if(notesPayableFinalBalance!=0){
+                model3.addRow(new Object[]{ "Notes Payable", notesPayableFinalBalance});
+            }
+            if(accruedExpensesPayableFinalBalance!=0){
+                model3.addRow(new Object[]{ "Accrued Expenses Payable", accruedExpensesPayableFinalBalance});
+            }
+            if(unearnedRevenueFinalBalance!=0){
+                model3.addRow(new Object[]{ "Unearned Revenue", unearnedRevenueFinalBalance});
+            }
+            if(longTermDebtFinalBalance!=0){
+                model3.addRow(new Object[]{ "Long-Term Debt", longTermDebtFinalBalance});
+            }
+            if(loansPayableFinalBalance!=0){
+                model3.addRow(new Object[]{ "Loans Payable", loansPayableFinalBalance});
+            }
+            if(taxPayableFinalBalance!=0){
+                model3.addRow(new Object[]{ "Tax Payable", taxPayableFinalBalance});
+            }
+            if(wagesPayableFinalBalance!=0){
+                model3.addRow(new Object[]{ "Wages Payable", wagesPayableFinalBalance});
+            }
+            if(interestPayableFinalBalance>0){
+                model3.addRow(new Object[]{ "Interest Payable", interestPayableFinalBalance});
+            }
+            if(commonStockFinalBalance!=0){
+                model3.addRow(new Object[]{ "Common Stock", commonStockFinalBalance});
+            }
+            if(paidInCapitalFinalBalance!=0){
+                model3.addRow(new Object[]{ "Paid-in Capital in Excess of Par", paidInCapitalFinalBalance});
+            }
+            if(retainedEarningsFinalBalance!=0){
+                model3.addRow(new Object[]{ "Retained Earnings", retainedEarningsFinalBalance});
+            }
+            if(treasuryStockFinalBalance!=0){
+                model3.addRow(new Object[]{ "Treasury Stock (contra-equity)", treasuryStockFinalBalance});
+            }
+            if(additionalPaidInCapitalFinalBalance!=0){
+                model3.addRow(new Object[]{ "Additional Paid-in Capital", additionalPaidInCapitalFinalBalance});
+            }
+            if(ownersCapitalFinalBalance!=0){
+                model3.addRow(new Object[]{ "Owner's Capital (for sole proprietorship)", ownersCapitalFinalBalance});
+            }
+            if(dividendDrawingsFinalBalance!=0){
+                model3.addRow(new Object[]{ "Dividend/Drawings (owner's withdrawals)", dividendDrawingsFinalBalance});
+            }
+            double assettotalnigs = cashFinalBalance + 
+                           accountsReceivableFinalBalance + 
+                           inventoryFinalBalance + 
+                           prepaidExpensesFinalBalance + 
+                           equipmentFinalBalance + 
+                           intangibleAssetsFinalBalance + 
+                           investmentsFinalBalance + 
+                           suppliesFinalBalance + 
+                           landFinalBalance;
+            
+            double liabilityEquitynigs = (commonStockFinalBalance + 
+                           paidInCapitalFinalBalance + 
+                           retainedEarningsFinalBalance + 
+                           treasuryStockFinalBalance + 
+                           additionalPaidInCapitalFinalBalance + 
+                           ownersCapitalFinalBalance + 
+                           dividendDrawingsFinalBalance)-(accountsPayableFinalBalance + 
+                           notesPayableFinalBalance + 
+                           accruedExpensesPayableFinalBalance + 
+                           unearnedRevenueFinalBalance + 
+                           longTermDebtFinalBalance + 
+                           loansPayableFinalBalance + 
+                           taxPayableFinalBalance + 
+                           wagesPayableFinalBalance + 
+                           interestPayableFinalBalance);
+            
+            model4.addRow(new Object[]{ "Total Assets: ", assettotalnigs});
+            model5.addRow(new Object[]{ "Total Liabilities & Equity: ", liabilityEquitynigs});
+            
+
+        } catch (Exception e) {
+            System.out.println("Error loading accounts data: " + e.getMessage());
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error loading accounts: " + e.getMessage());
+        }
+        
     }
-}
+    
     private void loadGeneralJournal() {
         try {
             String sqlquery = "SELECT * FROM Table1";
@@ -192,82 +440,35 @@ public class resulta extends javax.swing.JFrame {
             System.out.println("Error loading data: " + e.getMessage());
         }
     }
-
-    /*private void loadGeneralLedger() {
-    try {
-        DefaultTableModel model = (DefaultTableModel) jTable5.getModel();
-        model.setRowCount(0);
-
-        // Get all transactions ordered by date
-        String sqlquery = "SELECT * FROM Table1 ORDER BY Date";
-        pst = conn.prepareStatement(sqlquery);
-        rs = pst.executeQuery();
-
-        // Map to store running balances for each account
-        java.util.Map<String, Double> accountBalances = new java.util.HashMap<>();
+    
+    private void loadGeneralLedger() {
         
-        // Initialize all accounts with zero balance
-        String[] allAccounts = {
-            "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", 
-            "Prepaid Expenses [ASSET]", "Property, Plant & Equipment (PP&E) [ASSET]", 
-            "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", 
-            "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", 
-            "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", 
-            "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", 
-            "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", 
-            "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", 
-            "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", 
-            "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", 
-            "Additional Paid-in Capital [EQUITY]", 
-            "Owner's Capital (for sole proprietorship) [EQUITY]", 
-            "Dividend/Drawings (owner's withdrawals) [EQUITY]"
-        };
-        
-        for (String account : allAccounts) {
-            accountBalances.put(account, 0.0);
-        }
+        try {
+            String sqlquery = "SELECT * FROM Table1";
+            pst = conn.prepareStatement(sqlquery);
+            rs = pst.executeQuery();
 
-        while (rs.next()) {
-            String Date = rs.getString("Date");
-            String Description = rs.getString("Description");
-            String DebitAcc = rs.getString("Debit Account");
-            String CreditAcc = rs.getString("Credit Account");
-            String Amount = rs.getString("Amount");
-            double amountValue = Double.parseDouble(Amount.replace(",", ""));
+            DefaultTableModel model = (DefaultTableModel) jTable5.getModel();
+            model.setRowCount(0); // Clear old data
             
-            // Update balances for debit and credit accounts
-            double debitBalance = accountBalances.get(DebitAcc);
-            double creditBalance = accountBalances.get(CreditAcc);
-            
-            // Apply accounting rules
-            if (DebitAcc.contains("[ASSET]")) {
-                debitBalance += amountValue; // Assets increase with debit
-            } else if (DebitAcc.contains("[LIABILITY]") || DebitAcc.contains("[EQUITY]")) {
-                debitBalance -= amountValue; // Liabilities/Equity decrease with debit
-            }
-            
-            if (CreditAcc.contains("[ASSET]")) {
-                creditBalance -= amountValue; // Assets decrease with credit
-            } else if (CreditAcc.contains("[LIABILITY]") || CreditAcc.contains("[EQUITY]")) {
-                creditBalance += amountValue; // Liabilities/Equity increase with credit
-            }
-            
-            // Update the balances in the map
-            accountBalances.put(DebitAcc, debitBalance);
-            accountBalances.put(CreditAcc, creditBalance);
-            
-            // Add row to table - showing the Cash balance (or you can modify to show relevant balance)
-            double currentCashBalance = accountBalances.get("Cash [ASSET]");
-            
-            // Add each row
-            model.addRow(new Object[]{Date, Description, DebitAcc, CreditAcc, Amount, currentCashBalance});
-        }
+            while (rs.next()) {
+                String Date = rs.getString("Date");
+                String Description = rs.getString("Description");
+                String DebitAcc = rs.getString("Debit Account");
+                String CreditAcc = rs.getString("Credit Account");
+                String Amount = rs.getString("Amount");
+                
+                
 
-    } catch (Exception e) {
-        System.out.println("Error loading general ledger data: " + e.getMessage());
-        e.printStackTrace();
+                // Add kag row
+                model.addRow(new Object[]{Date, Description, DebitAcc, CreditAcc, Amount, Amount});
+            }
+            loadAccountsTable();
+        } catch (Exception e) {
+            System.out.println("Error loading data: " + e.getMessage());
+        }
     }
-}*/
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -306,8 +507,20 @@ public class resulta extends javax.swing.JFrame {
         jPanel3 = new javax.swing.JPanel();
         jScrollPane4 = new javax.swing.JScrollPane();
         jTable5 = new javax.swing.JTable();
+        jComboBox1 = new javax.swing.JComboBox<>();
+        jPanel4 = new javax.swing.JPanel();
+        jScrollPane5 = new javax.swing.JScrollPane();
+        jTable6 = new javax.swing.JTable();
+        jScrollPane6 = new javax.swing.JScrollPane();
+        jTable7 = new javax.swing.JTable();
+        jScrollPane7 = new javax.swing.JScrollPane();
+        jTable8 = new javax.swing.JTable();
+        jScrollPane8 = new javax.swing.JScrollPane();
+        jTable9 = new javax.swing.JTable();
         jPanel5 = new javax.swing.JPanel();
         jButton1 = new javax.swing.JButton();
+        jLabel7 = new javax.swing.JLabel();
+        deleteAll = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -317,11 +530,16 @@ public class resulta extends javax.swing.JFrame {
 
         jLabel3.setText("Debit Account");
 
-        DebitField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Property, Plant & Equipment (PP&E) [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
+        DebitField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Equipment [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
+        DebitField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                DebitFieldActionPerformed(evt);
+            }
+        });
 
         jLabel4.setText("Credit Account");
 
-        CreditField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Property, Plant & Equipment (PP&E) [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
+        CreditField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Equipment [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
 
         jLabel5.setText("Amount");
 
@@ -359,7 +577,7 @@ public class resulta extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(DescriptionField)
-                            .addComponent(DebitField, 0, 539, Short.MAX_VALUE)
+                            .addComponent(DebitField, 0, 772, Short.MAX_VALUE)
                             .addComponent(CreditField, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel6Layout.createSequentialGroup()
                                 .addComponent(Year, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -403,7 +621,7 @@ public class resulta extends javax.swing.JFrame {
                     .addComponent(AmountField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(218, Short.MAX_VALUE))
+                .addContainerGap(423, Short.MAX_VALUE))
         );
 
         jTabbedPane2.addTab("New Transactions", jPanel6);
@@ -543,16 +761,15 @@ public class resulta extends javax.swing.JFrame {
         jPanel7Layout.setHorizontalGroup(
             jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel7Layout.createSequentialGroup()
-                .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel7Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 708, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel7Layout.createSequentialGroup()
-                        .addGap(102, 102, 102)
-                        .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(8, Short.MAX_VALUE))
+                .addGap(102, 102, 102)
+                .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(655, Short.MAX_VALUE))
+            .addGroup(jPanel7Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane2)
+                .addContainerGap())
         );
         jPanel7Layout.setVerticalGroup(
             jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -561,9 +778,9 @@ public class resulta extends javax.swing.JFrame {
                 .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel6)
                     .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 369, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(70, 70, 70))
+                .addGap(18, 18, 18)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 567, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(59, Short.MAX_VALUE))
         );
 
         jTabbedPane2.addTab("Transactions", jPanel7);
@@ -595,15 +812,15 @@ public class resulta extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 710, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 943, Short.MAX_VALUE)
+                .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(53, 53, 53)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 394, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(27, Short.MAX_VALUE))
+                .addGap(14, 14, 14)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 659, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         jTabbedPane2.addTab("Accounts", jPanel1);
@@ -635,15 +852,12 @@ public class resulta extends javax.swing.JFrame {
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 697, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(19, Short.MAX_VALUE))
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 943, Short.MAX_VALUE)
+                .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(24, 24, 24)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(23, Short.MAX_VALUE))
+            .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 679, Short.MAX_VALUE)
         );
 
         jTabbedPane2.addTab("General Journal", jPanel2);
@@ -669,29 +883,209 @@ public class resulta extends javax.swing.JFrame {
         });
         jScrollPane4.setViewportView(jTable5);
 
+        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Plant & Equipment (PP&E) [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
+        jComboBox1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jComboBox1ActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
-                .addGap(18, 18, 18)
-                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 630, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(74, Short.MAX_VALUE))
+                .addGap(64, 64, 64)
+                .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 183, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 943, Short.MAX_VALUE)
+                .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
-                .addContainerGap(27, Short.MAX_VALUE)
-                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(20, 20, 20))
+                .addGap(16, 16, 16)
+                .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 623, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         jTabbedPane2.addTab("General Ledger", jPanel3);
 
+        jTable6.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null},
+                {null, null},
+                {null, null},
+                {null, null}
+            },
+            new String [] {
+                "Asset", "Amount"
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.String.class, java.lang.Double.class
+            };
+            boolean[] canEdit = new boolean [] {
+                false, false
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        jScrollPane5.setViewportView(jTable6);
+
+        jTable7.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null},
+                {null, null},
+                {null, null},
+                {null, null}
+            },
+            new String [] {
+                "Liabilities & Equity", "Amount"
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.String.class, java.lang.Double.class
+            };
+            boolean[] canEdit = new boolean [] {
+                false, false
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        jScrollPane6.setViewportView(jTable7);
+
+        jTable8.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null},
+                {null, null},
+                {null, null},
+                {null, null}
+            },
+            new String [] {
+                "", ""
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.String.class, java.lang.Double.class
+            };
+            boolean[] canEdit = new boolean [] {
+                false, false
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        jScrollPane7.setViewportView(jTable8);
+        if (jTable8.getColumnModel().getColumnCount() > 0) {
+            jTable8.getColumnModel().getColumn(0).setResizable(false);
+            jTable8.getColumnModel().getColumn(1).setResizable(false);
+        }
+
+        jTable9.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null},
+                {null, null},
+                {null, null},
+                {null, null}
+            },
+            new String [] {
+                "", ""
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.String.class, java.lang.Double.class
+            };
+            boolean[] canEdit = new boolean [] {
+                false, false
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        jScrollPane8.setViewportView(jTable9);
+        if (jTable9.getColumnModel().getColumnCount() > 0) {
+            jTable9.getColumnModel().getColumn(0).setResizable(false);
+            jTable9.getColumnModel().getColumn(1).setResizable(false);
+        }
+
+        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
+        jPanel4.setLayout(jPanel4Layout);
+        jPanel4Layout.setHorizontalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addGap(22, 22, 22)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 426, Short.MAX_VALUE)
+                    .addComponent(jScrollPane7, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 31, Short.MAX_VALUE)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 429, Short.MAX_VALUE)
+                    .addComponent(jScrollPane8, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                .addGap(47, 47, 47))
+        );
+        jPanel4Layout.setVerticalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addGap(64, 64, 64)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 350, Short.MAX_VALUE)
+                    .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane7, javax.swing.GroupLayout.PREFERRED_SIZE, 55, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jScrollPane8, javax.swing.GroupLayout.PREFERRED_SIZE, 55, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(204, Short.MAX_VALUE))
+        );
+
+        jTabbedPane2.addTab("Balance Sheet", jPanel4);
+
+        jButton1.setBackground(new java.awt.Color(51, 153, 255));
+        jButton1.setForeground(new java.awt.Color(255, 255, 255));
         jButton1.setText("ADD");
         jButton1.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 jButton1MouseClicked(evt);
+            }
+        });
+
+        jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 36)); // NOI18N
+        jLabel7.setText("Accounting System");
+
+        deleteAll.setBackground(new java.awt.Color(255, 0, 51));
+        deleteAll.setText("Clear Datas");
+        deleteAll.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                deleteAllMouseClicked(evt);
+            }
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                deleteAllMouseEntered(evt);
             }
         });
 
@@ -700,15 +1094,22 @@ public class resulta extends javax.swing.JFrame {
         jPanel5Layout.setHorizontalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGap(47, 47, 47)
+                .addComponent(jLabel7)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jButton1)
-                .addGap(167, 167, 167))
+                .addGap(26, 26, 26)
+                .addComponent(deleteAll)
+                .addGap(66, 66, 66))
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel5Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jButton1)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jButton1)
+                    .addComponent(jLabel7)
+                    .addComponent(deleteAll))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -727,11 +1128,11 @@ public class resulta extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTabbedPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 509, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(196, Short.MAX_VALUE))
+                .addComponent(jTabbedPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 714, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         pack();
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton1MouseClicked
@@ -805,6 +1206,35 @@ public class resulta extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_AmountFieldActionPerformed
 
+    private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
+        // TODO add your handling code here:
+        DefaultTableModel ob = (DefaultTableModel) jTable5.getModel();
+        TableRowSorter<DefaultTableModel> obj = new TableRowSorter<>(ob);
+        jTable5.setRowSorter(obj);
+        
+        String input = (String) jComboBox1.getSelectedItem();
+        String text = input.split("\\[")[0];
+        
+        if (text == null || text.trim().length() == 0) {
+            obj.setRowFilter(null);  // no filter → show all rows
+        } else {
+            obj.setRowFilter(RowFilter.regexFilter(text));
+        }
+    }//GEN-LAST:event_jComboBox1ActionPerformed
+
+    private void DebitFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_DebitFieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_DebitFieldActionPerformed
+
+    private void deleteAllMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_deleteAllMouseEntered
+        // TODO add your handling code here:
+    }//GEN-LAST:event_deleteAllMouseEntered
+
+    private void deleteAllMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_deleteAllMouseClicked
+        // TODO add your handling code here:
+        
+    }//GEN-LAST:event_deleteAllMouseClicked
+
     /**
      * @param args the command line arguments
      */
@@ -848,17 +1278,21 @@ public class resulta extends javax.swing.JFrame {
     private javax.swing.JTextField DescriptionField;
     private javax.swing.JComboBox<String> Month;
     private javax.swing.JComboBox<String> Year;
+    private javax.swing.JButton deleteAll;
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
+    private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
     private javax.swing.JPanel jPanel7;
@@ -866,11 +1300,21 @@ public class resulta extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JScrollPane jScrollPane4;
+    private javax.swing.JScrollPane jScrollPane5;
+    private javax.swing.JScrollPane jScrollPane6;
+    private javax.swing.JScrollPane jScrollPane7;
+    private javax.swing.JScrollPane jScrollPane8;
     private javax.swing.JTabbedPane jTabbedPane2;
     private javax.swing.JTable jTable2;
     private javax.swing.JTable jTable3;
     private javax.swing.JTable jTable4;
     private javax.swing.JTable jTable5;
+    private javax.swing.JTable jTable6;
+    private javax.swing.JTable jTable7;
+    private javax.swing.JTable jTable8;
+    private javax.swing.JTable jTable9;
     private javax.swing.JTextField jTextField1;
     // End of variables declaration//GEN-END:variables
 }
+
+//update3

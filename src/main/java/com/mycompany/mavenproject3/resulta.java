@@ -113,8 +113,8 @@ public class resulta extends javax.swing.JFrame {
                 {"Retained Earnings", "EQUITY"},
                 {"Treasury Stock (contra-equity)", "EQUITY"},
                 {"Additional Paid-in Capital", "EQUITY"},
-                {"Owner's Capital (for sole proprietorship)", "EQUITY"},  // Note: Changed to standard apostrophe
-                {"Dividend/Drawings (owner's withdrawals)", "EQUITY"}
+                {"Owner's Capital", "EQUITY"},  // Note: Changed to standard apostrophe
+                {"Drawings", "EQUITY"}
             };
 
             // Get all debit transactions from database
@@ -286,10 +286,10 @@ public class resulta extends javax.swing.JFrame {
                     case "Additional Paid-in Capital":
                         additionalPaidInCapitalFinalBalance = balance;
                         break;
-                    case "Owner's Capital (for sole proprietorship)":
+                    case "Owner's Capital":
                         ownersCapitalFinalBalance = balance;
                         break;
-                    case "Dividend/Drawings (owner's withdrawals)":
+                    case "Drawings":
                         dividendDrawingsFinalBalance = balance;
                         break;
                 }
@@ -366,10 +366,10 @@ public class resulta extends javax.swing.JFrame {
                 model3.addRow(new Object[]{ "Additional Paid-in Capital", additionalPaidInCapitalFinalBalance});
             }
             if(ownersCapitalFinalBalance!=0){
-                model3.addRow(new Object[]{ "Owner's Capital (for sole proprietorship)", ownersCapitalFinalBalance});
+                model3.addRow(new Object[]{ "Owner's Capital", ownersCapitalFinalBalance});
             }
             if(dividendDrawingsFinalBalance!=0){
-                model3.addRow(new Object[]{ "Dividend/Drawings (owner's withdrawals)", dividendDrawingsFinalBalance});
+                model3.addRow(new Object[]{ "Drawings", dividendDrawingsFinalBalance});
             }
             double assettotalnigs = cashFinalBalance + 
                            accountsReceivableFinalBalance + 
@@ -530,7 +530,7 @@ public class resulta extends javax.swing.JFrame {
 
         jLabel3.setText("Debit Account");
 
-        DebitField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Equipment [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
+        DebitField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Equipment [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital [EQUITY]", "Drawings [EQUITY]" }));
         DebitField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 DebitFieldActionPerformed(evt);
@@ -539,7 +539,7 @@ public class resulta extends javax.swing.JFrame {
 
         jLabel4.setText("Credit Account");
 
-        CreditField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Equipment [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Treasury Stock (contra-equity) [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital (for sole proprietorship) [EQUITY]", "Dividend/Drawings (owner’s withdrawals) [EQUITY]" }));
+        CreditField.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Cash [ASSET]", "Accounts Receivable [ASSET]", "Inventory [ASSET]", "Prepaid Expenses [ASSET]", "Equipment [ASSET]", "Intangible Assets [ASSET]", "Investments [ASSET]", "Supplies [ASSET]", "Land [ASSET]", "Equipment [ASSET]", "Accounts Payable [LIABILITY]", "Notes Payable [LIABILITY]", "Accrued Expenses Payable [LIABILITY]", "Unearned Revenue [LIABILITY]", "Long-Term Debt [LIABILITY]", "Loans Payable [LIABILITY]", "Tax Payable [LIABILITY]", "Wages Payable [LIABILITY]", "Interest Payable [LIABILITY]", "Common Stock [EQUITY]", "Paid-in Capital in Excess of Par [EQUITY]", "Retained Earnings [EQUITY]", "Additional Paid-in Capital [EQUITY]", "Owner’s Capital [EQUITY]", "Drawings [EQUITY]" }));
 
         jLabel5.setText("Amount");
 
@@ -1088,6 +1088,11 @@ public class resulta extends javax.swing.JFrame {
                 deleteAllMouseEntered(evt);
             }
         });
+        deleteAll.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteAllActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
         jPanel5.setLayout(jPanel5Layout);
@@ -1232,8 +1237,44 @@ public class resulta extends javax.swing.JFrame {
 
     private void deleteAllMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_deleteAllMouseClicked
         // TODO add your handling code here:
-        
+       int confirm = JOptionPane.showConfirmDialog(
+            this, 
+            "Are you sure you want to clear ALL data from Table1?\nThis action cannot be undone.", 
+            "Confirm Clear Database", 
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return; // User cancelled
+        }
+
+        try {
+            String sql = "DELETE FROM Table1";
+            pst = conn.prepareStatement(sql);
+            int rowsDeleted = pst.executeUpdate();
+
+            JOptionPane.showMessageDialog(this, 
+                rowsDeleted + " rows cleared from Table1 (structure preserved)", 
+                "Success", 
+                JOptionPane.INFORMATION_MESSAGE);
+
+            // Refresh tables to show empty data
+            loadTableData();
+
+        } catch (SQLException e) {
+            System.out.println("Error clearing table: " + e.getMessage());
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Error clearing table: " + e.getMessage(), 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_deleteAllMouseClicked
+
+    private void deleteAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteAllActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_deleteAllActionPerformed
 
     /**
      * @param args the command line arguments

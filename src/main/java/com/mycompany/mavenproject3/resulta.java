@@ -1259,7 +1259,6 @@ public class resulta extends javax.swing.JFrame {
                 "Success", 
                 JOptionPane.INFORMATION_MESSAGE);
 
-            // Refresh tables to show empty data
             loadTableData();
 
         } catch (SQLException e) {
